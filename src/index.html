@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>프리메모</title>
+  <link rel="stylesheet" href="index.css" />
+</head>
+<body>
+<div class="container">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2>책갈피</h2>
+      <span id="bookmark-count">0</span>
+    </div>
+    <input
+            type="text"
+            id="search-input"
+            placeholder="책갈피 검색..."
+    />
+    <div class="hint">
+      <div><kbd>Ctrl+B</kbd> 책갈피 / <kbd>Ctrl+Shift+B</kbd> 섹션 / <kbd>Ctrl+Shift+S</kbd> 중요</div>
+      <div class="hint-markers">
+        <span>## 섹션</span>
+        <span>@@ 책갈피</span>
+        <span>★ 중요</span>
+      </div>
+    </div>
+    <ul id="bookmark-list"></ul>
+  </aside>
+
+  <main class="editor">
+    <div class="editor-header">
+      <span id="status">저장됨</span>
+      <span id="char-count">0자</span>
+    </div>
+    <textarea
+            id="memo-input"
+            placeholder="여기에 막 붙여넣으세요.
+
+수동 책갈피: 줄 앞에 ##, @@, ★ 를 쓰세요.
+단축키: Ctrl+B (책갈피) / Ctrl+Shift+B (섹션) / Ctrl+Shift+S (중요)"
+            spellcheck="false"
+    ></textarea>
+  </main>
+</div>
+
+<!-- 토스트 알림 -->
+<div id="toast" class="toast"></div>
+
+<script src="renderer.js"></script>
+</body>
+</html>
