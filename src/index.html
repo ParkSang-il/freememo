@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>프리메모</title>
+  <link rel="stylesheet" href="../node_modules/codemirror/lib/codemirror.css" />
   <link rel="stylesheet" href="index.css" />
 </head>
 <body>
@@ -12,11 +13,7 @@
       <h2>책갈피</h2>
       <span id="bookmark-count">0</span>
     </div>
-    <input
-            type="text"
-            id="search-input"
-            placeholder="책갈피 검색..."
-    />
+    <input type="text" id="search-input" placeholder="책갈피 검색..." />
     <div class="hint">
       <div><kbd>Ctrl+B</kbd> 책갈피 / <kbd>Ctrl+Shift+B</kbd> 섹션 / <kbd>Ctrl+Shift+S</kbd> 중요</div>
       <div class="hint-markers">
@@ -29,24 +26,70 @@
   </aside>
 
   <main class="editor">
+    <div class="tab-bar">
+      <div id="tab-list" class="tab-list"></div>
+      <button id="tab-add" class="tab-add" title="새 탭 (Ctrl+T)">+</button>
+    </div>
     <div class="editor-header">
       <span id="status">저장됨</span>
-      <span id="char-count">0자</span>
+      <div class="editor-header-right">
+        <span id="char-count">0자</span>
+        <button id="settings-btn" title="편집기 설정">⚙</button>
+      </div>
     </div>
-    <textarea
-            id="memo-input"
-            placeholder="여기에 막 붙여넣으세요.
-
-수동 책갈피: 줄 앞에 ##, @@, ★ 를 쓰세요.
-단축키: Ctrl+B (책갈피) / Ctrl+Shift+B (섹션) / Ctrl+Shift+S (중요)"
-            spellcheck="false"
-    ></textarea>
+    <div id="settings-panel" class="settings-panel hidden">
+      <label class="setting-item">
+        <span>폰트</span>
+        <select id="font-family">
+          <option value="Consolas,'D2Coding',monospace">Consolas</option>
+          <option value="'D2Coding',monospace">D2Coding</option>
+          <option value="'Malgun Gothic',sans-serif">맑은 고딕</option>
+          <option value="'Nanum Gothic Coding',monospace">나눔고딕코딩</option>
+          <option value="'Courier New',monospace">Courier New</option>
+          <option value="'Segoe UI',sans-serif">Segoe UI</option>
+        </select>
+      </label>
+      <label class="setting-item">
+        <span>크기</span>
+        <div class="size-control">
+          <button id="font-size-down">−</button>
+          <span id="font-size-val">13</span><span>px</span>
+          <button id="font-size-up">+</button>
+        </div>
+      </label>
+      <label class="setting-item">
+        <span>행간</span>
+        <div class="size-control">
+          <input type="range" id="line-height" min="1.2" max="2.4" step="0.05" value="1.65" />
+          <span id="line-height-val">1.65</span>
+        </div>
+      </label>
+      <label class="setting-item">
+        <span>글자색</span>
+        <input type="color" id="font-color" value="#d4d4d4" />
+      </label>
+      <button id="settings-reset" class="settings-reset">초기화</button>
+    </div>
+    <div id="editor-container"></div>
   </main>
 </div>
 
-<!-- 토스트 알림 -->
+<!-- 선택 영역 서식 툴바 -->
+<div id="sel-toolbar" class="sel-toolbar hidden">
+  <label class="sel-color-wrap" title="글자색">
+    <span>A</span>
+    <input type="color" id="sel-color" value="#ff6b6b" />
+  </label>
+  <button class="sel-btn sel-bold"     id="sel-bold"      title="굵게"><b>B</b></button>
+  <button class="sel-btn"              id="sel-size-up"   title="크게">A<sup>+</sup></button>
+  <button class="sel-btn"              id="sel-size-down" title="작게">A<sup>−</sup></button>
+  <div class="sel-sep"></div>
+  <button class="sel-btn sel-clear-btn" id="sel-clear"   title="서식 제거">✕</button>
+</div>
+
 <div id="toast" class="toast"></div>
 
+<script src="../node_modules/codemirror/lib/codemirror.js"></script>
 <script src="renderer.js"></script>
 </body>
 </html>

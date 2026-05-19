@@ -2,94 +2,142 @@ const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
 const initSqlJs = require("sql.js");
-// Squirrel 이벤트 처리 (설치/업데이트/제거 시 깜빡임 방지)
-if (require("electron-squirrel-startup")) {
-    app.quit();
-}
+
+if (require("electron-squirrel-startup")) app.quit();
 
 const dbPath = path.join(app.getPath("userData"), "memos.db");
 let db;
-let SQL;
 
 function saveDatabase() {
     const data = db.export();
     fs.writeFileSync(dbPath, Buffer.from(data));
 }
 
-async function initDatabase() {
-    SQL = await initSqlJs();
+function dbRows(sql, params = []) {
+    const result = db.exec(sql, params);
+    if (!result.length) return [];
+    const cols = result[0].columns;
+    return result[0].values.map(row =>
+        Object.fromEntries(cols.map((c, i) => [c, row[i]]))
+    );
+}
 
+async function initDatabase() {
+    const SQL = await initSqlJs();
     if (fs.existsSync(dbPath)) {
-        const filebuffer = fs.readFileSync(dbPath);
-        db = new SQL.Database(filebuffer);
+        db = new SQL.Database(fs.readFileSync(dbPath));
     } else {
         db = new SQL.Database();
     }
 
-    // 단일 행만 쓰는 테이블 (id=1에 모든 내용 저장)
-    db.run(`
-        CREATE TABLE IF NOT EXISTS notepad (
-                                               id INTEGER PRIMARY KEY,
-                                               content TEXT NOT NULL,
-                                               updated_at INTEGER NOT NULL
-        )
-    `);
+    db.run(`CREATE TABLE IF NOT EXISTS notepad (
+        id INTEGER PRIMARY KEY,
+        content TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+    )`);
 
-    // 초기 행이 없으면 만들기
-    const result = db.exec("SELECT COUNT(*) FROM notepad");
-    if (result[0].values[0][0] === 0) {
-        db.run("INSERT INTO notepad (id, content, updated_at) VALUES (1, '', ?)", [
-            Date.now(),
-        ]);
+    db.run(`CREATE TABLE IF NOT EXISTS tabs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL DEFAULT '메모',
+        content TEXT NOT NULL DEFAULT '',
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+    )`);
+
+    db.run(`CREATE TABLE IF NOT EXISTS app_state (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    )`);
+
+    // 기존 notepad → 첫 번째 탭으로 마이그레이션
+    const tabCount = db.exec("SELECT COUNT(*) FROM tabs")[0].values[0][0];
+    if (tabCount === 0) {
+        let oldContent = "";
+        try {
+            const r = db.exec("SELECT content FROM notepad WHERE id = 1");
+            if (r.length > 0 && r[0].values.length > 0) oldContent = r[0].values[0][0] || "";
+        } catch (_) {}
+        db.run(
+            "INSERT INTO tabs (name, content, sort_order, created_at, updated_at) VALUES ('메모', ?, 0, ?, ?)",
+            [oldContent, Date.now(), Date.now()]
+        );
     }
 
     saveDatabase();
-    console.log("DB 초기화 완료:", dbPath);
 }
-
-const createWindow = () => {
-    const mainWindow = new BrowserWindow({
-        width: 1200,
-        height: 800,
-        webPreferences: {
-            preload: path.join(__dirname, "preload.js"),
-        },
-    });
-
-    mainWindow.loadFile(path.join(__dirname, "index.html"));
-};
 
 app.whenReady().then(async () => {
     await initDatabase();
 
-    // 메모 전체 내용 가져오기
-    ipcMain.handle("notepad:load", () => {
-        const result = db.exec("SELECT content FROM notepad WHERE id = 1");
-        if (result.length === 0) return "";
-        return result[0].values[0][0] || "";
-    });
+    ipcMain.handle("tabs:load", () =>
+        dbRows("SELECT id, name, content, sort_order FROM tabs ORDER BY sort_order ASC, id ASC")
+    );
 
-    // 메모 전체 내용 저장
-    ipcMain.handle("notepad:save", (event, content) => {
-        db.run("UPDATE notepad SET content = ?, updated_at = ? WHERE id = 1", [
-            content,
-            Date.now(),
-        ]);
+    ipcMain.handle("tabs:save", (_, { id, content }) => {
+        db.run("UPDATE tabs SET content=?, updated_at=? WHERE id=?", [content, Date.now(), id]);
         saveDatabase();
         return true;
     });
 
-    createWindow();
+    ipcMain.handle("tabs:create", (_, { name }) => {
+        const maxOrd = db.exec("SELECT COALESCE(MAX(sort_order), 0) FROM tabs")[0].values[0][0];
+        db.run(
+            "INSERT INTO tabs (name, content, sort_order, created_at, updated_at) VALUES (?, '', ?, ?, ?)",
+            [name || "새 메모", maxOrd + 1, Date.now(), Date.now()]
+        );
+        const newId = db.exec("SELECT last_insert_rowid()")[0].values[0][0];
+        saveDatabase();
+        return newId;
+    });
+
+    ipcMain.handle("tabs:rename", (_, { id, name }) => {
+        db.run("UPDATE tabs SET name=?, updated_at=? WHERE id=?", [name, Date.now(), id]);
+        saveDatabase();
+        return true;
+    });
+
+    ipcMain.handle("tabs:delete", (_, { id }) => {
+        db.run("DELETE FROM tabs WHERE id=?", [id]);
+        const count = db.exec("SELECT COUNT(*) FROM tabs")[0].values[0][0];
+        if (count === 0) {
+            db.run(
+                "INSERT INTO tabs (name, content, sort_order, created_at, updated_at) VALUES ('메모', '', 0, ?, ?)",
+                [Date.now(), Date.now()]
+            );
+        }
+        saveDatabase();
+        return true;
+    });
+
+    ipcMain.handle("state:get", (_, key) => {
+        const r = db.exec("SELECT value FROM app_state WHERE key=?", [key]);
+        return r.length && r[0].values.length ? r[0].values[0][0] : null;
+    });
+
+    ipcMain.handle("state:set", (_, { key, value }) => {
+        db.run("INSERT OR REPLACE INTO app_state (key, value) VALUES (?, ?)", [key, String(value)]);
+        saveDatabase();
+        return true;
+    });
+
+    const mainWindow = new BrowserWindow({
+        width: 1200,
+        height: 800,
+        webPreferences: { preload: path.join(__dirname, "preload.js") },
+    });
+    mainWindow.loadFile(path.join(__dirname, "index.html"));
 
     app.on("activate", () => {
         if (BrowserWindow.getAllWindows().length === 0) {
-            createWindow();
+            new BrowserWindow({
+                width: 1200, height: 800,
+                webPreferences: { preload: path.join(__dirname, "preload.js") },
+            }).loadFile(path.join(__dirname, "index.html"));
         }
     });
 });
 
 app.on("window-all-closed", () => {
-    if (process.platform !== "darwin") {
-        app.quit();
-    }
+    if (process.platform !== "darwin") app.quit();
 });
