@@ -17,7 +17,7 @@
     "name": "ParkSI",
     "email": "teamgod2@naver.com"
   },
-  "license": "MIT",
+  "license": "UNLICENSED",
   "dependencies": {
     "codemirror": "^5.65.21",
     "electron-squirrel-startup": "^1.0.1",

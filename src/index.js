@@ -1,4 +1,8 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, shell } = require("electron");
+
+// ★ Gumroad 제품 ID — 대시보드 > 제품 > 공유 링크의 마지막 부분
+// 예: https://yourname.gumroad.com/l/freememo → "freememo"
+const GUMROAD_PRODUCT_ID = "mbp4TDtW89PF52t7h0rgMQ==";
 const path = require("node:path");
 const fs = require("node:fs");
 const initSqlJs = require("sql.js");
@@ -70,6 +74,46 @@ async function initDatabase() {
 app.whenReady().then(async () => {
     await initDatabase();
 
+    // ── 라이선스 ──────────────────────────────────────────────
+    ipcMain.handle("license:check", () => {
+        const r = db.exec("SELECT value FROM app_state WHERE key='license_activated'");
+        return r.length > 0 && r[0].values[0][0] === "true";
+    });
+
+    ipcMain.handle("license:activate", async (_, licenseKey) => {
+        try {
+            const body = `product_id=${encodeURIComponent(GUMROAD_PRODUCT_ID)}&license_key=${encodeURIComponent(licenseKey.trim())}&increment_uses_count=false`;
+            console.log("[License] POST body:", body);
+
+            const resp = await fetch("https://api.gumroad.com/v2/licenses/verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body,
+            });
+            const data = await resp.json();
+            console.log("[License] Gumroad response:", JSON.stringify(data));
+
+            if (data.success) {
+                db.run("INSERT OR REPLACE INTO app_state (key, value) VALUES ('license_activated', 'true')");
+                db.run("INSERT OR REPLACE INTO app_state (key, value) VALUES ('license_key', ?)", [licenseKey.trim()]);
+                saveDatabase();
+                return { success: true };
+            } else {
+                // product_id가 잘못됐을 때 더 구체적인 메시지 반환
+                const msg = data.message || "Invalid license key.";
+                return { success: false, message: `${msg} (product_id: "${GUMROAD_PRODUCT_ID}")` };
+            }
+        } catch (e) {
+            console.error("[License] Error:", e);
+            return { success: false, message: `Network error: ${e.message}` };
+        }
+    });
+
+    ipcMain.handle("license:openStore", () => {
+        shell.openExternal(`https://gumroad.com/l/${GUMROAD_PRODUCT_ID}`);
+    });
+
+    // ── 탭 ────────────────────────────────────────────────────
     ipcMain.handle("tabs:load", () =>
         dbRows("SELECT id, name, content, sort_order FROM tabs ORDER BY sort_order ASC, id ASC")
     );

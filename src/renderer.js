@@ -159,7 +159,7 @@ function renderBookmarks() {
             li.className = `type-${b.type}`;
             const tabTag = isCurrent
                 ? `<span class="bm-tab-cur">${escapeHtml(tab.name)}</span>`
-                : `<span class="bm-tab-other">↗ ${escapeHtml(tab.name)}</span>`;
+                : `<span class="bm-tab-other">${escapeHtml(t("otherTabLabel", tab.name))}</span>`;
             li.innerHTML = `<span class="icon">${b.icon}</span><span class="label">${escapeHtml(b.label)}</span>${tabTag}`;
             li.title = `[${tab.name}] ${b.label}`;
             li.addEventListener("click", () => {
@@ -176,7 +176,7 @@ function renderBookmarks() {
 
     if (total === 0) {
         const empty = document.createElement("li");
-        empty.textContent = filter ? "(검색 결과 없음)" : "(책갈피 없음)";
+        empty.textContent = filter ? t("noSearchResults") : t("noBookmarks");
         empty.style.cssText = "color:#555;cursor:default";
         bookmarkList.appendChild(empty);
     }
@@ -198,7 +198,7 @@ function renderTabs() {
         const closeBtn = document.createElement("button");
         closeBtn.className = "tab-close";
         closeBtn.textContent = "×";
-        closeBtn.title = "닫기 (Ctrl+W)";
+        closeBtn.title = t("tabCloseTitle");
         closeBtn.addEventListener("click", e => { e.stopPropagation(); closeTab(tab.id); });
 
         div.append(nameSpan, closeBtn);
@@ -266,7 +266,7 @@ function switchToTab(tabId) {
     renderTabs();
     renderBookmarks();
     charCount.textContent = `${content.length}자`;
-    status.textContent = "저장됨";
+    status.textContent = t("saved");
     status.style.color = "#4ec9b0";
 
     window.api.setState("activeTabId", String(tabId));
@@ -282,17 +282,18 @@ function switchRelativeTab(delta) {
 
 // ── 새 탭 생성 ────────────────────────────────────────────────
 async function createNewTab() {
-    const newId = await window.api.createTab("새 메모");
-    tabs.push({ id: newId, name: "새 메모", content: "", sort_order: tabs.length });
+    const name = t("newTabName");
+    const newId = await window.api.createTab(name);
+    tabs.push({ id: newId, name, content: "", sort_order: tabs.length });
     tabContents[newId] = "";
     switchToTab(newId);
 }
 
 // ── 탭 닫기 ───────────────────────────────────────────────────
 async function closeTab(tabId) {
-    if (tabs.length <= 1) { showToast("마지막 탭은 닫을 수 없습니다."); return; }
-    const tab = tabs.find(t => t.id === tabId);
-    if (!confirm(`"${tab?.name}" 탭을 닫으시겠습니까?`)) return;
+    if (tabs.length <= 1) { showToast(t("lastTabWarning")); return; }
+    const tab = tabs.find(tb => tb.id === tabId);
+    if (!confirm(t("closeTabConfirm", tab?.name ?? ""))) return;
 
     const idx = tabs.findIndex(t => t.id === tabId);
     const nextTab = tabs[idx + 1] || tabs[idx - 1];
@@ -356,7 +357,7 @@ function scheduleAutoSave() {
     if (activeTabId === null) return;
     const tabId = activeTabId;
     tabContents[tabId] = editor.getValue();     // 즉시 캐시 갱신
-    status.textContent = "저장 중...";
+    status.textContent = t("saving");
     status.style.color = "#dcdcaa";
     clearTimeout(saveTimers[tabId]);
     tabStylesCache[tabId] = serializeMarks();
@@ -364,7 +365,7 @@ function scheduleAutoSave() {
         await window.api.saveTab(tabId, tabContents[tabId] ?? "");
         await window.api.setState(`tab_styles_${tabId}`, JSON.stringify(tabStylesCache[tabId] ?? []));
         if (activeTabId === tabId) {
-            status.textContent = "저장됨";
+            status.textContent = t("saved");
             status.style.color = "#4ec9b0";
         }
     }, 500);
@@ -391,8 +392,8 @@ editor.on("change", (_, change) => {
     if (change.origin === "paste") {
         setTimeout(() => {
             const added = extractBookmarks(editor.getValue()).length - bmCountBeforePaste;
-            if (added > 0) showToast(`📌 책갈피 ${added}개 자동 인식 — Ctrl+B로 추가 가능`);
-            else if (change.text?.length > 1) showToast("💡 책갈피가 필요하면 Ctrl+B");
+            if (added > 0) showToast(t("bookmarksDetected", added));
+            else if (change.text?.length > 1) showToast(t("bookmarkHint"));
         }, 0);
     }
 });
@@ -570,8 +571,49 @@ document.getElementById("settings-reset").addEventListener("click", () => {
     applyEditorSettings(); saveEditorSettings();
 });
 
-// ── 초기화 ────────────────────────────────────────────────────
-(async function init() {
+// ── 라이선스 활성화 화면 ──────────────────────────────────────
+function showLicenseOverlay() {
+    document.getElementById("license-overlay").classList.remove("hidden");
+}
+
+function hideLicenseOverlay() {
+    document.getElementById("license-overlay").classList.add("hidden");
+}
+
+document.getElementById("license-activate-btn").addEventListener("click", async () => {
+    const key = document.getElementById("license-input").value.trim();
+    if (!key) return;
+
+    const btn = document.getElementById("license-activate-btn");
+    const msg = document.getElementById("license-msg");
+    btn.textContent = t("licenseActivating");
+    btn.disabled = true;
+    msg.textContent = "";
+    msg.className = "license-msg";
+
+    const result = await window.api.activateLicense(key);
+    if (result.success) {
+        msg.textContent = t("licenseSuccess");
+        msg.classList.add("license-msg-ok");
+        setTimeout(() => { hideLicenseOverlay(); initApp(); }, 800);
+    } else {
+        msg.textContent = `❌ ${result.message}`;
+        msg.classList.add("license-msg-err");
+        btn.textContent = "활성화";
+        btn.disabled = false;
+    }
+});
+
+document.getElementById("license-input").addEventListener("keydown", e => {
+    if (e.key === "Enter") document.getElementById("license-activate-btn").click();
+});
+
+document.getElementById("license-buy-btn").addEventListener("click", () => {
+    window.api.openStore();
+});
+
+// ── 앱 메인 초기화 ────────────────────────────────────────────
+async function initApp() {
     await loadEditorSettings();
     tabs = await window.api.loadTabs();
     tabs.forEach(tab => { tabContents[tab.id] = tab.content; });
@@ -594,4 +636,32 @@ document.getElementById("settings-reset").addEventListener("click", () => {
     renderTabs();
     renderBookmarks();
     editor.focus();
+}
+
+// ── 언어 선택기 ───────────────────────────────────────────────
+document.getElementById("lang-select").addEventListener("change", async e => {
+    i18n.setLang(e.target.value);
+    i18n.apply();
+    await window.api.setState("language", e.target.value);
+    // 동적으로 렌더링된 부분 갱신
+    status.textContent = t("saved");
+    renderTabs();
+    renderBookmarks();
+});
+
+// ── 진입점: 언어 로딩 → 라이선스 확인 → 앱 실행 ──────────────
+(async function () {
+    // 언어 설정 먼저 로드
+    const savedLang = await window.api.getState("language");
+    i18n.setLang(savedLang || "en");
+    document.getElementById("lang-select").value = i18n.getLang();
+    i18n.apply();
+
+    const activated = await window.api.checkLicense();
+    if (activated) {
+        await initApp();
+    } else {
+        showLicenseOverlay();
+        document.getElementById("license-input").focus();
+    }
 })();

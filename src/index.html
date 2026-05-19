@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>프리메모</title>
+  <title>FreeMemo</title>
   <link rel="stylesheet" href="../node_modules/codemirror/lib/codemirror.css" />
   <link rel="stylesheet" href="index.css" />
 </head>
@@ -10,16 +10,20 @@
 <div class="container">
   <aside class="sidebar">
     <div class="sidebar-header">
-      <h2>책갈피</h2>
+      <h2 data-i18n="bookmarks">Bookmarks</h2>
       <span id="bookmark-count">0</span>
     </div>
-    <input type="text" id="search-input" placeholder="책갈피 검색..." />
+    <input type="text" id="search-input"
+           data-i18n-placeholder="searchPlaceholder"
+           placeholder="Search bookmarks..." />
     <div class="hint">
-      <div><kbd>Ctrl+B</kbd> 책갈피 / <kbd>Ctrl+Shift+B</kbd> 섹션 / <kbd>Ctrl+Shift+S</kbd> 중요</div>
+      <div data-i18n-html="hintHtml">
+        <kbd>Ctrl+B</kbd> Bookmark / <kbd>Ctrl+Shift+B</kbd> Section / <kbd>Ctrl+Shift+S</kbd> Star
+      </div>
       <div class="hint-markers">
-        <span>## 섹션</span>
-        <span>@@ 책갈피</span>
-        <span>★ 중요</span>
+        <span data-i18n="markerSection">## Section</span>
+        <span data-i18n="markerBookmark">@@ Bookmark</span>
+        <span data-i18n="markerStar">★ Star</span>
       </div>
     </div>
     <ul id="bookmark-list"></ul>
@@ -28,18 +32,19 @@
   <main class="editor">
     <div class="tab-bar">
       <div id="tab-list" class="tab-list"></div>
-      <button id="tab-add" class="tab-add" title="새 탭 (Ctrl+T)">+</button>
+      <button id="tab-add" class="tab-add"
+              data-i18n-title="tabAddTitle" title="New Tab (Ctrl+T)">+</button>
     </div>
     <div class="editor-header">
-      <span id="status">저장됨</span>
+      <span id="status" data-i18n="saved">Saved</span>
       <div class="editor-header-right">
-        <span id="char-count">0자</span>
-        <button id="settings-btn" title="편집기 설정">⚙</button>
+        <span id="char-count">0</span>
+        <button id="settings-btn" title="Editor settings">⚙</button>
       </div>
     </div>
     <div id="settings-panel" class="settings-panel hidden">
       <label class="setting-item">
-        <span>폰트</span>
+        <span data-i18n="settingsFont">Font</span>
         <select id="font-family">
           <option value="Consolas,'D2Coding',monospace">Consolas</option>
           <option value="'D2Coding',monospace">D2Coding</option>
@@ -50,7 +55,7 @@
         </select>
       </label>
       <label class="setting-item">
-        <span>크기</span>
+        <span data-i18n="settingsSize">Size</span>
         <div class="size-control">
           <button id="font-size-down">−</button>
           <span id="font-size-val">13</span><span>px</span>
@@ -58,37 +63,69 @@
         </div>
       </label>
       <label class="setting-item">
-        <span>행간</span>
+        <span data-i18n="settingsLineHeight">Line height</span>
         <div class="size-control">
           <input type="range" id="line-height" min="1.2" max="2.4" step="0.05" value="1.65" />
           <span id="line-height-val">1.65</span>
         </div>
       </label>
       <label class="setting-item">
-        <span>글자색</span>
+        <span data-i18n="settingsColor">Color</span>
         <input type="color" id="font-color" value="#d4d4d4" />
       </label>
-      <button id="settings-reset" class="settings-reset">초기화</button>
+      <label class="setting-item">
+        <span data-i18n="settingsLanguage">Language</span>
+        <select id="lang-select">
+          <option value="en">English</option>
+          <option value="ko">한국어</option>
+        </select>
+      </label>
+      <button id="settings-reset" class="settings-reset" data-i18n="settingsReset">Reset</button>
     </div>
     <div id="editor-container"></div>
   </main>
 </div>
 
+<!-- 라이선스 활성화 화면 -->
+<div id="license-overlay" class="license-overlay hidden">
+  <div class="license-box">
+    <div class="license-logo">📝</div>
+    <h1>FreeMemo</h1>
+    <p class="license-desc" data-i18n="licenseDesc">
+      A license key is required to use this software.
+    </p>
+    <input type="text" id="license-input" class="license-input"
+           data-i18n-placeholder="licenseInputPH"
+           placeholder="Enter license key (e.g. XXXX-XXXX-XXXX-XXXX)"
+           spellcheck="false" autocomplete="off" />
+    <button id="license-activate-btn" class="license-btn"
+            data-i18n="licenseActivateBtn">Activate</button>
+    <div id="license-msg" class="license-msg"></div>
+    <button id="license-buy-btn" class="license-buy-btn"
+            data-i18n="licenseBuyBtn">🛒 Buy on Gumroad</button>
+  </div>
+</div>
+
 <!-- 선택 영역 서식 툴바 -->
 <div id="sel-toolbar" class="sel-toolbar hidden">
-  <label class="sel-color-wrap" title="글자색">
+  <label class="sel-color-wrap" data-i18n-title="selBold" title="Color">
     <span>A</span>
     <input type="color" id="sel-color" value="#ff6b6b" />
   </label>
-  <button class="sel-btn sel-bold"     id="sel-bold"      title="굵게"><b>B</b></button>
-  <button class="sel-btn"              id="sel-size-up"   title="크게">A<sup>+</sup></button>
-  <button class="sel-btn"              id="sel-size-down" title="작게">A<sup>−</sup></button>
+  <button class="sel-btn sel-bold"      id="sel-bold"
+          data-i18n-title="selBold"      title="Bold"><b>B</b></button>
+  <button class="sel-btn"               id="sel-size-up"
+          data-i18n-title="selBigger"    title="Bigger">A<sup>+</sup></button>
+  <button class="sel-btn"               id="sel-size-down"
+          data-i18n-title="selSmaller"   title="Smaller">A<sup>−</sup></button>
   <div class="sel-sep"></div>
-  <button class="sel-btn sel-clear-btn" id="sel-clear"   title="서식 제거">✕</button>
+  <button class="sel-btn sel-clear-btn" id="sel-clear"
+          data-i18n-title="selClear"     title="Clear format">✕</button>
 </div>
 
 <div id="toast" class="toast"></div>
 
+<script src="i18n.js"></script>
 <script src="../node_modules/codemirror/lib/codemirror.js"></script>
 <script src="renderer.js"></script>
 </body>

@@ -400,6 +400,97 @@ body {
   background: linear-gradient(to right, #ff6b6b70, #ff6b6b15, transparent);
 }
 
+/* ── 라이선스 활성화 화면 ───────────────────────*/
+.license-overlay {
+  position: fixed;
+  inset: 0;
+  background: #1e1e1e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.license-overlay.hidden { display: none; }
+
+.license-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 420px;
+  padding: 48px 40px;
+  background: #252526;
+  border: 1px solid #333;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+
+.license-logo { font-size: 48px; line-height: 1; }
+
+.license-box h1 {
+  font-size: 22px;
+  font-weight: 600;
+  color: #e0e0e0;
+  margin: 0;
+}
+
+.license-desc {
+  font-size: 13px;
+  color: #888;
+  text-align: center;
+  margin: 0;
+}
+
+.license-input {
+  width: 100%;
+  padding: 10px 14px;
+  background: #1e1e1e;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #e0e0e0;
+  font-size: 13px;
+  font-family: "Consolas", monospace;
+  text-align: center;
+  outline: none;
+  letter-spacing: 1px;
+}
+.license-input:focus { border-color: #007acc; }
+
+.license-btn {
+  width: 100%;
+  padding: 10px;
+  background: #007acc;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.license-btn:hover:not(:disabled) { background: #005fa3; }
+.license-btn:disabled { background: #444; cursor: default; }
+
+.license-msg {
+  font-size: 12px;
+  min-height: 18px;
+  text-align: center;
+}
+.license-msg-ok  { color: #4ec9b0; }
+.license-msg-err { color: #f48771; }
+
+.license-buy-btn {
+  background: none;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #888;
+  font-size: 12px;
+  padding: 7px 16px;
+  cursor: pointer;
+  width: 100%;
+}
+.license-buy-btn:hover { border-color: #666; color: #ccc; }
+
 /* ── 선택 영역 서식 툴바 ─────────────────────── */
 .sel-toolbar {
   position: fixed;
