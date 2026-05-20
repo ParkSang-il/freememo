@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain, shell } = require("electron");
 
 // ★ Gumroad 제품 ID — 대시보드 > 제품 > 공유 링크의 마지막 부분
 // 예: https://yourname.gumroad.com/l/freememo → "freememo"
-const GUMROAD_PRODUCT_ID = "mbp4TDtW89PF52t7h0rgMQ==";
+const GUMROAD_PRODUCT_ID = "A4icUTWmxAkoh6Pcvh-ipQ==";
 const path = require("node:path");
 const fs = require("node:fs");
 const initSqlJs = require("sql.js");
